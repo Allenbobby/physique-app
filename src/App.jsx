@@ -189,9 +189,9 @@ function monthsToGoal(curr,goal,phase){
   return Math.ceil(diff/rate);
 }
 function isGoalRealistic(profile){
-  const currentWeight=parseFloat(pm_currentWeight)||70;
-  const goalWeight=parseFloat(pm_goalWeight)||75;
-  const durationMonths=parseInt(pm_durationMonths)||12;
+  const currentWeight=parseFloat(profile.currentWeight)||70;
+  const goalWeight=parseFloat(profile.goalWeight)||75;
+  const durationMonths=parseInt(profile.durationMonths)||12;
   const diff=goalWeight-currentWeight;
   const isCut=diff<0;
   const maxGainPerMonth=2.2, maxLossPerMonth=1.5;
@@ -326,7 +326,7 @@ function GlowBtn({children,onClick,color=T.accent,disabled,style={}}){
 // ── GOAL VALIDATOR COMPONENT ─────────────────────────────────
 function GoalValidator({profile,onAccept,onRevise}){
   const result=isGoalRealistic(profile);
-  const diff=parseFloat(pm_goalWeight)-parseFloat(pm_currentWeight);
+  const diff=parseFloat(profile.goalWeight)-parseFloat(profile.currentWeight);
   const viable=result.feasible;
   const suggestedDuration=result.minMonths;
 
@@ -341,11 +341,11 @@ function GoalValidator({profile,onAccept,onRevise}){
       <Card style={{marginBottom:14}} color={viable?T.green:T.gold}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           {[
-            {l:"Start Weight",v:`${pm_currentWeight} kg`},
-            {l:"Goal Weight",v:`${pm_goalWeight} kg`},
+            {l:"Start Weight",v:`${profile.currentWeight} kg`},
+            {l:"Goal Weight",v:`${profile.goalWeight} kg`},
             {l:"Change Needed",v:`${diff>0?"+":""}${diff} kg`,c:diff>0?T.blue:T.red},
-            {l:"Your Duration",v:`${pm_durationMonths} months`},
-            {l:"Min Needed",v:`${suggestedDuration} months`,c:parseInt(pm_durationMonths)>=suggestedDuration?T.green:T.red},
+            {l:"Your Duration",v:`${profile.durationMonths} months`},
+            {l:"Min Needed",v:`${suggestedDuration} months`,c:parseInt(profile.durationMonths)>=suggestedDuration?T.green:T.red},
             {l:"Max Possible",v:`${result.maxPossible} kg`,c:T.accent},
           ].map(s=>(
             <div key={s.l} style={{textAlign:"center",padding:"10px",background:T.dim,borderRadius:12}}>
@@ -360,8 +360,8 @@ function GoalValidator({profile,onAccept,onRevise}){
         <Card style={{marginBottom:14,background:"rgba(255,196,60,.06)"}} color={T.gold}>
           <div style={{fontSize:11,color:T.gold,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Viable Alternative</div>
           <p style={{fontSize:13,color:"#ffe08a",margin:"0 0 12px",lineHeight:1.6}}>
-            In <strong>{pm_durationMonths} months</strong>, you can realistically reach <strong>{result.maxPossible} kg</strong> — not {pm_goalWeight} kg.<br/><br/>
-            To hit {pm_goalWeight} kg, you need at least <strong>{suggestedDuration} months</strong>.
+            In <strong>{profile.durationMonths} months</strong>, you can realistically reach <strong>{result.maxPossible} kg</strong> — not {profile.goalWeight} kg.<br/><br/>
+            To hit {profile.goalWeight} kg, you need at least <strong>{suggestedDuration} months</strong>.
           </p>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>onRevise("goalWeight",result.maxPossible.toString())} style={{flex:1,background:"rgba(255,196,60,.15)",border:`1px solid ${T.gold}44`,borderRadius:12,padding:"10px",color:T.gold,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
@@ -379,8 +379,8 @@ function GoalValidator({profile,onAccept,onRevise}){
         {[
           {l:"Phase",v:result.isCut?"Cutting (calorie deficit)":"Bulking then Cut",c:result.isCut?T.green:T.blue},
           {l:"Weekly change",v:result.isCut?"~0.3-0.5kg loss":"~0.4-0.6kg gain",c:T.text},
-          {l:"Workout split",v:parseInt(pm_durationMonths)>=12?"PPL 6-day":"5-day split",c:T.text},
-          {l:"Goal look",v:GOAL_LOOKS.find(g=>g.id===pm_goalLook)?.label||pm_goalLook,c:T.accent},
+          {l:"Workout split",v:parseInt(profile.durationMonths)>=12?"PPL 6-day":"5-day split",c:T.text},
+          {l:"Goal look",v:GOAL_LOOKS.find(g=>g.id===profile.goalLook)?.label||profile.goalLook,c:T.accent},
         ].map(s=>(
           <div key={s.l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
             <span style={{fontSize:13,color:T.muted}}>{s.l}</span>
@@ -668,7 +668,7 @@ export default function App(){
   async function askAI(msg){
     if(!msg.trim()||aiLoading)return;
     const profile=userProfile||{};
-    const nut=calcNutrition(parseFloat(pm_currentWeight)||70,parseFloat(profile.height||173)||170,parseInt(profile.age)||25,profile.gender||"male","moderate");
+    const nut=calcNutrition(parseFloat(userProfile?.current_weight||userProfile?.currentWeight||70),parseFloat(userProfile?.height||173),parseInt(userProfile?.age||25),userProfile?.gender||"male","moderate");
     const userMsg={role:"user",content:msg};
     const newH=[...aiHistory,userMsg];
     setAiHistory(newH); setAiInput(""); setAiLoading(true);
@@ -678,7 +678,7 @@ export default function App(){
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",max_tokens:1000,
-          system:`You are an elite fitness coach. User: ${profile.name||"User"}, ${profile.age||"?"}yo ${profile.gender||"male"}, ${profile.height||173||"?"}cm, ${pm_currentWeight||"?"}kg → goal ${pm_goalWeight||"?"}kg in ${pm_durationMonths||"?"}mo. Goal look: ${GOAL_LOOKS.find(g=>g.id===pm_goalLook)?.label||"?"}. Daily target: ${nut.cals}kcal, ${nut.protein}g protein. Be direct, specific, motivating. 2-4 sentences max. Casual tone.`,
+          system:`You are an elite fitness coach. User: ${userProfile?.name||"User"}, ${userProfile?.age||"?"}yo ${userProfile?.gender||"male"}, ${userProfile?.height||"?"}cm, ${userProfile?.current_weight||"?"}kg → goal ${userProfile?.goal_weight||"?"}kg in ${userProfile?.duration_months||"?"}mo. Goal look: ${GOAL_LOOKS.find(g=>g.id===userProfile?.goal_look)?.label||"?"}. Daily target: ${nut.cals}kcal, ${nut.protein}g protein. Be direct, specific, motivating. 2-4 sentences max. Casual tone.`,
           messages:newH.map(m=>({role:m.role,content:m.content})),
         }),
       });
@@ -844,6 +844,8 @@ export default function App(){
   }
 
   // ── MAIN APP ──
+  if(screen !== "app") return null;
+
   const TABS=[
     {id:"home",icon:"⚡",label:"Home"},
     {id:"calendar",icon:"📅",label:"Plan"},

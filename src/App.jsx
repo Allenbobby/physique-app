@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { supabase } from './supabase.js';
 
 // ── FONTS & STYLES ────────────────────────────────────────────
 const _fl = document.createElement("link");
@@ -161,7 +162,8 @@ const GOAL_LOOKS = [
 ];
 
 // ── HELPERS ──────────────────────────────────────────────────
-const store = {
+// Local storage fallback (used for workout/supplement state only)
+const local = {
   async get(k){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;}},
   async set(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}},
   async del(k){try{await window.storage.delete(k);}catch{}},
@@ -187,9 +189,9 @@ function monthsToGoal(curr,goal,phase){
   return Math.ceil(diff/rate);
 }
 function isGoalRealistic(profile){
-  const currentWeight=parseFloat(profile.currentWeight)||70;
-  const goalWeight=parseFloat(profile.goalWeight)||75;
-  const durationMonths=parseInt(profile.durationMonths)||12;
+  const currentWeight=parseFloat(pm_currentWeight)||70;
+  const goalWeight=parseFloat(pm_goalWeight)||75;
+  const durationMonths=parseInt(pm_durationMonths)||12;
   const diff=goalWeight-currentWeight;
   const isCut=diff<0;
   const maxGainPerMonth=2.2, maxLossPerMonth=1.5;
@@ -324,7 +326,7 @@ function GlowBtn({children,onClick,color=T.accent,disabled,style={}}){
 // ── GOAL VALIDATOR COMPONENT ─────────────────────────────────
 function GoalValidator({profile,onAccept,onRevise}){
   const result=isGoalRealistic(profile);
-  const diff=parseFloat(profile.goalWeight)-parseFloat(profile.currentWeight);
+  const diff=parseFloat(pm_goalWeight)-parseFloat(pm_currentWeight);
   const viable=result.feasible;
   const suggestedDuration=result.minMonths;
 
@@ -339,11 +341,11 @@ function GoalValidator({profile,onAccept,onRevise}){
       <Card style={{marginBottom:14}} color={viable?T.green:T.gold}>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           {[
-            {l:"Start Weight",v:`${profile.currentWeight} kg`},
-            {l:"Goal Weight",v:`${profile.goalWeight} kg`},
+            {l:"Start Weight",v:`${pm_currentWeight} kg`},
+            {l:"Goal Weight",v:`${pm_goalWeight} kg`},
             {l:"Change Needed",v:`${diff>0?"+":""}${diff} kg`,c:diff>0?T.blue:T.red},
-            {l:"Your Duration",v:`${profile.durationMonths} months`},
-            {l:"Min Needed",v:`${suggestedDuration} months`,c:parseInt(profile.durationMonths)>=suggestedDuration?T.green:T.red},
+            {l:"Your Duration",v:`${pm_durationMonths} months`},
+            {l:"Min Needed",v:`${suggestedDuration} months`,c:parseInt(pm_durationMonths)>=suggestedDuration?T.green:T.red},
             {l:"Max Possible",v:`${result.maxPossible} kg`,c:T.accent},
           ].map(s=>(
             <div key={s.l} style={{textAlign:"center",padding:"10px",background:T.dim,borderRadius:12}}>
@@ -358,8 +360,8 @@ function GoalValidator({profile,onAccept,onRevise}){
         <Card style={{marginBottom:14,background:"rgba(255,196,60,.06)"}} color={T.gold}>
           <div style={{fontSize:11,color:T.gold,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Viable Alternative</div>
           <p style={{fontSize:13,color:"#ffe08a",margin:"0 0 12px",lineHeight:1.6}}>
-            In <strong>{profile.durationMonths} months</strong>, you can realistically reach <strong>{result.maxPossible} kg</strong> — not {profile.goalWeight} kg.<br/><br/>
-            To hit {profile.goalWeight} kg, you need at least <strong>{suggestedDuration} months</strong>.
+            In <strong>{pm_durationMonths} months</strong>, you can realistically reach <strong>{result.maxPossible} kg</strong> — not {pm_goalWeight} kg.<br/><br/>
+            To hit {pm_goalWeight} kg, you need at least <strong>{suggestedDuration} months</strong>.
           </p>
           <div style={{display:"flex",gap:8}}>
             <button onClick={()=>onRevise("goalWeight",result.maxPossible.toString())} style={{flex:1,background:"rgba(255,196,60,.15)",border:`1px solid ${T.gold}44`,borderRadius:12,padding:"10px",color:T.gold,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
@@ -377,8 +379,8 @@ function GoalValidator({profile,onAccept,onRevise}){
         {[
           {l:"Phase",v:result.isCut?"Cutting (calorie deficit)":"Bulking then Cut",c:result.isCut?T.green:T.blue},
           {l:"Weekly change",v:result.isCut?"~0.3-0.5kg loss":"~0.4-0.6kg gain",c:T.text},
-          {l:"Workout split",v:parseInt(profile.durationMonths)>=12?"PPL 6-day":"5-day split",c:T.text},
-          {l:"Goal look",v:GOAL_LOOKS.find(g=>g.id===profile.goalLook)?.label||profile.goalLook,c:T.accent},
+          {l:"Workout split",v:parseInt(pm_durationMonths)>=12?"PPL 6-day":"5-day split",c:T.text},
+          {l:"Goal look",v:GOAL_LOOKS.find(g=>g.id===pm_goalLook)?.label||pm_goalLook,c:T.accent},
         ].map(s=>(
           <div key={s.l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
             <span style={{fontSize:13,color:T.muted}}>{s.l}</span>
@@ -399,9 +401,8 @@ export default function App(){
   const [screen,setScreen]=useState("loading");
   const [authMode,setAuthMode]=useState("login");
   const [tab,setTab]=useState("home");
-  const [users,setUsers]=useState({});
-  const [currentUser,setCurrentUser]=useState(null);
-  const [userData,setUserData]=useState({});
+  const [currentUser,setCurrentUser]=useState(null); // supabase user object
+  const [userProfile,setUserProfile]=useState(null); // profile from DB
 
   // Setup wizard
   const [setupStep,setSetupStep]=useState(0);
@@ -437,138 +438,237 @@ export default function App(){
   const [measureInput,setMeasureInput]=useState({});
   const chatRef=useRef(null);
 
-  // Load
+  // ── Supabase Auth + Data Load ──────────────────────────────
   useEffect(()=>{
-    (async()=>{
-      const u=await store.get("users")||{};
-      const cu=await store.get("currentUser");
-      setUsers(u);
-      if(cu&&u[cu]){
-        setCurrentUser(cu);
-        await loadUserData(cu);
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({data:{session}})=>{
+      if(session?.user){
+        setCurrentUser(session.user);
+        loadUserData(session.user.id);
         setScreen("app");
-      } else setScreen("auth");
-    })();
+      } else {
+        setScreen("auth");
+      }
+    });
+    // Listen for auth changes (login/logout)
+    const {data:{subscription}} = supabase.auth.onAuthStateChange((_event, session)=>{
+      if(session?.user){
+        setCurrentUser(session.user);
+      } else {
+        setCurrentUser(null);
+        setScreen("auth");
+      }
+    });
+    return ()=> subscription.unsubscribe();
   },[]);
 
   useEffect(()=>{chatRef.current?.scrollIntoView({behavior:"smooth"});},[aiHistory]);
 
   async function loadUserData(uid){
-    const wl=await store.get(`wl_${uid}`)||[];
-    const fl=await store.get(`fl_${uid}`)||[];
-    const pr=await store.get(`prs_${uid}`)||{};
-    const ms=await store.get(`ms_${uid}`)||[];
-    const de=await store.get(`doneEx_${uid}`)||{};
-    const ds=await store.get(`doneSupps_${uid}`)||{};
-    const ah=await store.get(`ai_${uid}`)||[];
-    const ud=await store.get(`ud_${uid}`)||{};
-    setWeightLog(wl); setFoodLog(fl); setPrs(pr); setMeasures(ms);
-    setDoneEx(de); setDoneSupps(ds); setAiHistory(ah); setUserData(ud);
-    return wl;
+    try{
+      // Load profile
+      const {data:prof} = await supabase.from("profiles").select("*").eq("id",uid).single();
+      if(prof) setUserProfile(prof);
+
+      // Load weight log
+      const {data:wl} = await supabase.from("weight_log").select("*").eq("user_id",uid).order("logged_at");
+      if(wl) setWeightLog(wl.map(w=>({date:w.logged_at,weight:w.weight,id:w.id})));
+
+      // Load food log
+      const {data:fl} = await supabase.from("food_log").select("*").eq("user_id",uid).order("logged_at");
+      if(fl) setFoodLog(fl.map(f=>({...f,date:f.logged_at})));
+
+      // Load PRs
+      const {data:prData} = await supabase.from("prs").select("*").eq("user_id",uid).order("logged_at");
+      if(prData){
+        const prMap={};
+        prData.forEach(p=>{ if(!prMap[p.lift]) prMap[p.lift]=[]; prMap[p.lift].push({weight:p.weight,reps:p.reps,date:p.logged_at,id:p.id}); });
+        setPrs(prMap);
+      }
+
+      // Load measurements
+      const {data:ms} = await supabase.from("measurements").select("*").eq("user_id",uid).order("logged_at");
+      if(ms) setMeasures(ms.map(m=>({...m.data,date:m.logged_at,id:m.id})));
+
+      // Load local-only state (workout ticks, supp ticks, ai chat)
+      const de=await local.get(`doneEx_${uid}`)||{};
+      const ds=await local.get(`doneSupps_${uid}`)||{};
+      const ah=await local.get(`ai_${uid}`)||[];
+      setDoneEx(de); setDoneSupps(ds); setAiHistory(ah);
+    }catch(e){ console.error("loadUserData error:",e); }
   }
 
-  async function saveD(key,val,uid=currentUser){
-    await store.set(`${key}_${uid}`,val);
+  async function saveD(key,val,uid=currentUser?.id){
+    // Only used for local-only data now (workout ticks, supp ticks)
+    await local.set(`${key}_${uid}`,val);
   }
 
   // Auth
   async function handleLogin(){
     setAuthError("");
-    const u=users[authForm.email];
-    if(!u){setAuthError("No account found. Sign up first.");return;}
-    if(u.password!==authForm.password){setAuthError("Wrong password.");return;}
-    await store.set("currentUser",authForm.email);
-    setCurrentUser(authForm.email);
-    await loadUserData(authForm.email);
+    const {data,error} = await supabase.auth.signInWithPassword({
+      email: authForm.email,
+      password: authForm.password,
+    });
+    if(error){ setAuthError(error.message); return; }
+    setCurrentUser(data.user);
+    await loadUserData(data.user.id);
     setScreen("app");
   }
 
   async function handleSignup(){
     setAuthError("");
     if(!setupProfile.email||!setupProfile.password){setAuthError("Email and password required.");return;}
-    if(users[setupProfile.email]){setAuthError("Account already exists.");return;}
     if(setupStep===0){setSetupStep(1);return;}
     if(setupStep===1){setSetupStep(2);return;}
     if(setupStep===2){setShowValidator(true);return;}
   }
 
   async function finalizeSignup(){
-    const uid=setupProfile.email;
-    const newUser={...setupProfile,createdAt:new Date().toISOString()};
-    const updatedUsers={...users,[uid]:newUser};
-    await store.set("users",updatedUsers);
-    await store.set("currentUser",uid);
-    const wl=[{date:new Date().toISOString(),weight:parseFloat(setupProfile.currentWeight)}];
-    await store.set(`wl_${uid}`,wl);
-    setUsers(updatedUsers); setCurrentUser(uid); setWeightLog(wl);
-    setScreen("app"); setShowValidator(false);
+    setAuthError("");
+    // 1. Create auth account in Supabase
+    const {data,error} = await supabase.auth.signUp({
+      email: setupProfile.email,
+      password: setupProfile.password,
+    });
+    if(error){ setAuthError(error.message); setShowValidator(false); return; }
+
+    const uid = data.user.id;
+
+    // 2. Save profile to profiles table
+    await supabase.from("profiles").insert({
+      id: uid,
+      name: setupProfile.name,
+      height: parseFloat(setupProfile.height)||0,
+      age: parseInt(setupProfile.age)||0,
+      gender: setupProfile.gender,
+      current_weight: parseFloat(setupProfile.currentWeight)||0,
+      goal_weight: parseFloat(setupProfile.goalWeight)||0,
+      goal_look: setupProfile.goalLook,
+      duration_months: parseInt(setupProfile.durationMonths)||12,
+      activity_level: setupProfile.activityLevel,
+    });
+
+    // 3. Save starting weight
+    await supabase.from("weight_log").insert({
+      user_id: uid,
+      weight: parseFloat(setupProfile.currentWeight)||0,
+    });
+
+    // 4. Set state and go to app
+    const prof = {
+      name: setupProfile.name,
+      height: parseFloat(setupProfile.height)||0,
+      age: parseInt(setupProfile.age)||0,
+      gender: setupProfile.gender,
+      current_weight: parseFloat(setupProfile.currentWeight)||0,
+      goal_weight: parseFloat(setupProfile.goalWeight)||0,
+      goal_look: setupProfile.goalLook,
+      duration_months: parseInt(setupProfile.durationMonths)||12,
+      activity_level: setupProfile.activityLevel,
+    };
+    setCurrentUser(data.user);
+    setUserProfile(prof);
+    setWeightLog([{date:new Date().toISOString(),weight:parseFloat(setupProfile.currentWeight)||0}]);
+    setScreen("app");
+    setShowValidator(false);
   }
 
   async function logout(){
-    await store.del("currentUser");
-    setCurrentUser(null); setScreen("auth"); setAuthForm({email:"",password:""});
+    await supabase.auth.signOut();
+    setCurrentUser(null); setUserProfile(null); setScreen("auth"); setAuthForm({email:"",password:""});
     setWeightLog([]); setFoodLog([]); setPrs({}); setMeasures([]); setAiHistory([]);
+    setDoneEx({}); setDoneSupps({});
   }
 
   // Data ops
   async function logWeight(){
-    if(!newWeight)return;
-    const entry={date:new Date().toISOString(),weight:parseFloat(newWeight)};
-    const updated=[...weightLog,entry];
-    setWeightLog(updated); await saveD("wl",updated); setNewWeight("");
+    if(!newWeight||!currentUser)return;
+    const {data,error} = await supabase.from("weight_log").insert({
+      user_id: currentUser.id,
+      weight: parseFloat(newWeight),
+    }).select().single();
+    if(!error&&data){
+      const entry={date:data.logged_at,weight:data.weight,id:data.id};
+      setWeightLog(prev=>[...prev,entry]);
+    }
+    setNewWeight("");
   }
 
   async function resetWeightLog(){
-    const first=weightLog.length>0?[weightLog[0]]:[];
-    setWeightLog(first); await saveD("wl",first);
+    if(!currentUser)return;
+    // Delete all except first entry
+    const toDelete=weightLog.slice(1).filter(w=>w.id);
+    for(const w of toDelete){
+      await supabase.from("weight_log").delete().eq("id",w.id);
+    }
+    setWeightLog(weightLog.slice(0,1));
   }
 
   async function deleteWeightEntry(idx){
-    const updated=weightLog.filter((_,i)=>i!==idx);
-    setWeightLog(updated); await saveD("wl",updated);
+    const entry=weightLog[idx];
+    if(entry?.id) await supabase.from("weight_log").delete().eq("id",entry.id);
+    setWeightLog(prev=>prev.filter((_,i)=>i!==idx));
   }
 
   async function logFood(){
-    if(!selectedFood||!foodQty)return;
+    if(!selectedFood||!foodQty||!currentUser)return;
     const ratio=parseFloat(foodQty)/100;
     const entry={
+      user_id: currentUser.id,
       name:selectedFood.n, qty:parseFloat(foodQty), unit:selectedFood.unit,
-      cal:Math.round(selectedFood.cal*ratio), p:Math.round(selectedFood.p*ratio*10)/10,
-      c:Math.round(selectedFood.c*ratio*10)/10, f:Math.round(selectedFood.f*ratio*10)/10,
-      date:new Date().toISOString(),
+      cal:Math.round(selectedFood.cal*ratio),
+      protein:Math.round(selectedFood.p*ratio*10)/10,
+      carbs:Math.round(selectedFood.c*ratio*10)/10,
+      fats:Math.round(selectedFood.f*ratio*10)/10,
     };
-    const updated=[...foodLog,entry];
-    setFoodLog(updated); await saveD("fl",updated);
+    const {data,error} = await supabase.from("food_log").insert(entry).select().single();
+    if(!error&&data){
+      setFoodLog(prev=>[...prev,{...data,p:data.protein,c:data.carbs,f:data.fats,date:data.logged_at}]);
+    }
     setSelectedFood(null); setFoodSearch(""); setFoodQty("100");
   }
 
   async function logPR(){
-    if(!prW)return;
-    const entry={weight:parseFloat(prW),reps:parseInt(prR)||1,date:new Date().toISOString()};
-    const updated={...prs,[prLift]:[...(prs[prLift]||[]),entry]};
-    setPrs(updated); await saveD("prs",updated); setPrW(""); setPrR("");
+    if(!prW||!currentUser)return;
+    const {data,error} = await supabase.from("prs").insert({
+      user_id: currentUser.id,
+      lift: prLift,
+      weight: parseFloat(prW),
+      reps: parseInt(prR)||1,
+    }).select().single();
+    if(!error&&data){
+      setPrs(prev=>({...prev,[prLift]:[...(prev[prLift]||[]),{weight:data.weight,reps:data.reps,date:data.logged_at,id:data.id}]}));
+    }
+    setPrW(""); setPrR("");
   }
 
   async function saveMeasure(){
-    const entry={...measureInput,date:new Date().toISOString()};
-    const updated=[...measures,entry];
-    setMeasures(updated); await saveD("ms",updated); setMeasureInput({});
+    if(!currentUser)return;
+    const {data,error} = await supabase.from("measurements").insert({
+      user_id: currentUser.id,
+      data: measureInput,
+    }).select().single();
+    if(!error&&data){
+      setMeasures(prev=>[...prev,{...data.data,date:data.logged_at,id:data.id}]);
+    }
+    setMeasureInput({});
   }
 
   async function toggleEx(k){
     const u={...doneEx,[k]:!doneEx[k]};
-    setDoneEx(u); await saveD("doneEx",u);
+    setDoneEx(u); await local.set(`doneEx_${currentUser?.id}`,u);
   }
 
   async function toggleSupp(k){
     const u={...doneSupps,[k]:!doneSupps[k]};
-    setDoneSupps(u); await saveD("doneSupps",u);
+    setDoneSupps(u); await local.set(`doneSupps_${currentUser?.id}`,u);
   }
 
   async function askAI(msg){
     if(!msg.trim()||aiLoading)return;
-    const profile=users[currentUser]||{};
-    const nut=calcNutrition(parseFloat(profile.currentWeight)||70,parseFloat(profile.height)||170,parseInt(profile.age)||25,profile.gender||"male","moderate");
+    const profile=userProfile||{};
+    const nut=calcNutrition(parseFloat(pm_currentWeight)||70,parseFloat(profile.height||173)||170,parseInt(profile.age)||25,profile.gender||"male","moderate");
     const userMsg={role:"user",content:msg};
     const newH=[...aiHistory,userMsg];
     setAiHistory(newH); setAiInput(""); setAiLoading(true);
@@ -578,28 +678,33 @@ export default function App(){
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
           model:"claude-sonnet-4-20250514",max_tokens:1000,
-          system:`You are an elite fitness coach. User: ${profile.name||"User"}, ${profile.age||"?"}yo ${profile.gender||"male"}, ${profile.height||"?"}cm, ${profile.currentWeight||"?"}kg → goal ${profile.goalWeight||"?"}kg in ${profile.durationMonths||"?"}mo. Goal look: ${GOAL_LOOKS.find(g=>g.id===profile.goalLook)?.label||"?"}. Daily target: ${nut.cals}kcal, ${nut.protein}g protein. Be direct, specific, motivating. 2-4 sentences max. Casual tone.`,
+          system:`You are an elite fitness coach. User: ${profile.name||"User"}, ${profile.age||"?"}yo ${profile.gender||"male"}, ${profile.height||173||"?"}cm, ${pm_currentWeight||"?"}kg → goal ${pm_goalWeight||"?"}kg in ${pm_durationMonths||"?"}mo. Goal look: ${GOAL_LOOKS.find(g=>g.id===pm_goalLook)?.label||"?"}. Daily target: ${nut.cals}kcal, ${nut.protein}g protein. Be direct, specific, motivating. 2-4 sentences max. Casual tone.`,
           messages:newH.map(m=>({role:m.role,content:m.content})),
         }),
       });
       const data=await res.json();
       const reply=data.content?.map(c=>c.text||"").join("")||"Ask me anything about your training!";
       const updated=[...newH,{role:"assistant",content:reply}];
-      setAiHistory(updated); await saveD("ai",updated);
+      setAiHistory(updated); await local.set(`ai_${currentUser?.id}`,updated);
     }catch{
       const updated=[...newH,{role:"assistant",content:"Connection issue — try again! 💪"}];
-      setAiHistory(updated);
+      setAiHistory(updated); await local.set(`ai_${currentUser?.id}`,updated);
     }
     setAiLoading(false);
   }
 
   // Derived
-  const profile=users[currentUser]||{};
-  const cw=weightLog.length>0?weightLog[weightLog.length-1].weight:parseFloat(profile.currentWeight)||70;
-  const isCutPhase=cw>=parseFloat(profile.goalWeight)-(parseFloat(profile.goalWeight)<parseFloat(profile.currentWeight)?0:3);
-  const goalMode=parseFloat(profile.goalWeight)<parseFloat(profile.currentWeight)?"cut":"bulk";
-  const nut=calcNutrition(cw,parseFloat(profile.height)||170,parseInt(profile.age)||25,profile.gender||"male",goalMode);
-  const woTemplate=parseInt(profile.durationMonths)>=10?WO_TEMPLATES.intermediate:WO_TEMPLATES.beginner;
+  const profile=userProfile||{};
+  // Map DB snake_case to camelCase for display
+  const pm_currentWeight = profile.current_weight || profile.currentWeight || 70;
+  const pm_goalWeight = profile.goal_weight || profile.goalWeight || 75;
+  const pm_durationMonths = profile.duration_months || profile.durationMonths || 12;
+  const pm_goalLook = profile.goal_look || profile.goalLook || 'lean_athletic';
+  const cw=weightLog.length>0?weightLog[weightLog.length-1].weight:parseFloat(pm_currentWeight)||70;
+  const isCutPhase=cw>=parseFloat(pm_goalWeight)-(parseFloat(pm_goalWeight)<parseFloat(pm_currentWeight)?0:3);
+  const goalMode=parseFloat(pm_goalWeight)<parseFloat(pm_currentWeight)?"cut":"bulk";
+  const nut=calcNutrition(cw,parseFloat(profile.height||173)||170,parseInt(profile.age)||25,profile.gender||"male",goalMode);
+  const woTemplate=parseInt(pm_durationMonths)>=10?WO_TEMPLATES.intermediate:WO_TEMPLATES.beginner;
   const todayDow=new Date().getDay()===0?6:new Date().getDay()-1;
   const todayWO=woTemplate.days[todayDow];
   const weekDates=getWeekDates(weekOffset);
@@ -650,7 +755,7 @@ export default function App(){
           <GoalValidator
             profile={setupProfile}
             onAccept={finalizeSignup}
-            onRevise={(field,val)=>{setSetupProfile(p=>({...p,[field]:val}));setShowValidator(false);}}
+            onRevise={(field,val)=>{setSetupProfile(p=>({...p,[field]:val.toString()}));setShowValidator(false);}}
           />
         </div>
       </div>
@@ -761,7 +866,7 @@ export default function App(){
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{textAlign:"right"}}>
             <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:accentColor,lineHeight:1}}>{cw} kg</div>
-            <div style={{fontSize:10,color:T.muted}}>BMI {bmi(cw,parseFloat(profile.height)||170)}</div>
+            <div style={{fontSize:10,color:T.muted}}>BMI {bmi(cw,parseFloat(profile.height||173)||170)}</div>
           </div>
           <button onClick={logout} style={{background:T.dim,border:`1px solid ${T.border}`,borderRadius:10,padding:"6px 12px",color:T.muted,fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Out</button>
         </div>
@@ -774,13 +879,13 @@ export default function App(){
           <div className="fu">
             {/* Goal progress banner */}
             <div style={{background:`linear-gradient(135deg,${accentColor}18,${T.purple}10)`,border:`1px solid ${accentColor}30`,borderRadius:20,padding:18,marginBottom:14,display:"flex",gap:14,alignItems:"center"}}>
-              <Ring pct={Math.min(100,Math.round(Math.abs(cw-(parseFloat(profile.currentWeight)||cw))/Math.abs((parseFloat(profile.goalWeight)||cw)-(parseFloat(profile.currentWeight)||cw))*100))} color={accentColor} size={72} stroke={7}>
-                <div style={{fontSize:14,fontWeight:800,color:accentColor}}>{Math.min(100,Math.round(Math.abs(cw-(parseFloat(profile.currentWeight)||cw))/Math.abs((parseFloat(profile.goalWeight)||cw)-(parseFloat(profile.currentWeight)||cw))*100))}%</div>
+              <Ring pct={Math.min(100,Math.round(Math.abs(cw-(parseFloat(pm_currentWeight)||cw))/Math.abs((parseFloat(pm_goalWeight)||cw)-(parseFloat(pm_currentWeight)||cw))*100))} color={accentColor} size={72} stroke={7}>
+                <div style={{fontSize:14,fontWeight:800,color:accentColor}}>{Math.min(100,Math.round(Math.abs(cw-(parseFloat(pm_currentWeight)||cw))/Math.abs((parseFloat(pm_goalWeight)||cw)-(parseFloat(pm_currentWeight)||cw))*100))}%</div>
               </Ring>
               <div style={{flex:1}}>
                 <div style={{fontSize:11,color:T.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Goal Progress</div>
-                <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:T.text,lineHeight:1.2}}>{cw} → {profile.goalWeight} kg</div>
-                <div style={{fontSize:12,color:T.muted,marginTop:4}}>{Math.round(Math.abs(parseFloat(profile.goalWeight)-cw)*10)/10} kg remaining · {profile.durationMonths} month plan</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:T.text,lineHeight:1.2}}>{cw} → {pm_goalWeight} kg</div>
+                <div style={{fontSize:12,color:T.muted,marginTop:4}}>{Math.round(Math.abs(parseFloat(pm_goalWeight)-cw)*10)/10} kg remaining · {pm_durationMonths} month plan</div>
               </div>
             </div>
 
@@ -1036,8 +1141,8 @@ export default function App(){
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
               {[
                 {l:"Current",v:`${cw}kg`,c:accentColor},
-                {l:"Goal",v:`${profile.goalWeight}kg`,c:T.green},
-                {l:"BMI",v:bmi(cw,parseFloat(profile.height)||170),c:T.blue},
+                {l:"Goal",v:`${pm_goalWeight}kg`,c:T.green},
+                {l:"BMI",v:bmi(cw,parseFloat(profile.height||173)||170),c:T.blue},
               ].map(s=>(
                 <Card key={s.l} style={{textAlign:"center",padding:14}}>
                   <div style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:s.c}}>{s.v}</div>

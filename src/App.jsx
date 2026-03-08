@@ -7,6 +7,7 @@ const _st=document.createElement("style");_st.textContent=`*{box-sizing:border-b
 const DARK={bg:"#000",bg2:"#0c0c0c",card:"#141414",card2:"#1c1c1c",border:"rgba(255,255,255,0.07)",border2:"rgba(255,255,255,0.12)",text:"#fff",text2:"#e5e5e5",muted:"#636366",dim:"rgba(255,255,255,0.04)",green:"#30d158",red:"#ff453a",gold:"#ffd60a",orange:"#ff9f0a",purple:"#bf5af2",teal:"#5ac8fa",tabBar:"rgba(10,10,10,0.92)",shadow:"0 4px 24px rgba(0,0,0,0.5)",inputBg:"#1c1c1c",inputBorder:"#2c2c2e"};
 const LIGHT={bg:"#f2f2f7",bg2:"#fff",card:"#fff",card2:"#f2f2f7",border:"rgba(0,0,0,0.07)",border2:"rgba(0,0,0,0.12)",text:"#000",text2:"#1c1c1e",muted:"#8e8e93",dim:"rgba(0,0,0,0.04)",green:"#34c759",red:"#ff3b30",gold:"#ff9500",orange:"#ff9500",purple:"#af52de",teal:"#32ade6",tabBar:"rgba(242,242,247,0.94)",shadow:"0 2px 16px rgba(0,0,0,0.08)",inputBg:"#f2f2f7",inputBorder:"#d1d1d6"};
 
+
 const FOODS=[
   {n:"Chicken Breast",cal:165,p:31,c:0,f:3.6,unit:"g",cat:"Protein"},{n:"Chicken Thigh",cal:209,p:26,c:0,f:11,unit:"g",cat:"Protein"},{n:"Eggs (whole)",cal:155,p:13,c:1.1,f:11,unit:"g",cat:"Protein"},{n:"Egg White",cal:52,p:11,c:.7,f:.2,unit:"g",cat:"Protein"},{n:"Paneer",cal:265,p:18,c:1.2,f:20,unit:"g",cat:"Protein"},{n:"Tuna (canned)",cal:116,p:26,c:0,f:1,unit:"g",cat:"Protein"},{n:"Salmon",cal:208,p:20,c:0,f:13,unit:"g",cat:"Protein"},{n:"Whey Protein",cal:400,p:80,c:8,f:5,unit:"g",cat:"Protein"},{n:"Soya Chunks",cal:345,p:52,c:33,f:.5,unit:"g",cat:"Protein"},{n:"Tofu",cal:76,p:8,c:1.9,f:4.8,unit:"g",cat:"Protein"},
   {n:"Dal Makhani",cal:130,p:6,c:16,f:5,unit:"g",cat:"North Indian"},{n:"Dal Tadka",cal:116,p:7,c:18,f:2,unit:"g",cat:"North Indian"},{n:"Chana Masala",cal:164,p:9,c:27,f:3,unit:"g",cat:"North Indian"},{n:"Rajma",cal:127,p:8.7,c:22,f:.5,unit:"g",cat:"North Indian"},{n:"Palak Paneer",cal:150,p:7,c:6,f:11,unit:"g",cat:"North Indian"},{n:"Butter Chicken",cal:164,p:15,c:6,f:9,unit:"g",cat:"North Indian"},{n:"Aloo Gobi",cal:80,p:2.5,c:12,f:2.5,unit:"g",cat:"North Indian"},{n:"Aloo Paratha",cal:280,p:5,c:40,f:11,unit:"g",cat:"North Indian"},{n:"Roti / Chapati",cal:297,p:9,c:60,f:3.7,unit:"g",cat:"North Indian"},{n:"Chicken Biryani",cal:200,p:12,c:25,f:5,unit:"g",cat:"North Indian"},{n:"Khichdi",cal:120,p:4,c:22,f:2,unit:"g",cat:"North Indian"},{n:"Egg Bhurji",cal:185,p:13,c:3,f:13,unit:"g",cat:"North Indian"},{n:"Paneer Bhurji",cal:210,p:14,c:4,f:15,unit:"g",cat:"North Indian"},{n:"Sarson da Saag",cal:90,p:4,c:10,f:4,unit:"g",cat:"North Indian"},{n:"Chole Bhature",cal:350,p:9,c:50,f:13,unit:"g",cat:"North Indian"},
@@ -26,7 +27,7 @@ const PR_LIFTS=["Bench Press","Squat","Deadlift","OHP","Pull-ups","Barbell Row",
 const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 function bmi(w,h){return(w/((h/100)**2)).toFixed(1);}
-function calcNut(w,h,age,gender,mode){const bmr=gender==="female"?10*w+6.25*h-5*age-161:10*w+6.25*h-5*age+5;const tdee=Math.round(bmr*1.55);const sur=mode==="cut"?-400:350;const cals=Math.round(tdee+sur);const protein=mode==="cut"?Math.round(w*2.6):Math.round(w*2.2);const fats=Math.round(w*(mode==="cut"?.8:1));const carbs=Math.max(0,Math.round((cals-protein*4-fats*9)/4));return{tdee,cals,protein,carbs,fats};}
+function calcNut(w,h,age,gender,mode,activity){const mult={sedentary:1.2,light:1.375,moderate:1.55,active:1.725}[activity]||1.55;const bmr=gender==="female"?10*w+6.25*h-5*age-161:10*w+6.25*h-5*age+5;const tdee=Math.round(bmr*mult);const sur=mode==="cut"?-400:350;const cals=Math.round(tdee+sur);const protein=mode==="cut"?Math.round(w*2.6):Math.round(w*2.2);const fats=Math.round(w*(mode==="cut"?.8:1));const carbs=Math.max(0,Math.round((cals-protein*4-fats*9)/4));return{tdee,cals,protein,carbs,fats};}
 function isReal(cw,gw,mo){const diff=parseFloat(gw)-parseFloat(cw);const isCut=diff<0;const m=parseInt(mo)||12;const rate=isCut?1.5:2.2;const maxP=isCut?parseFloat(cw)-rate*m:parseFloat(cw)+rate*m;return{ok:isCut?parseFloat(gw)>=maxP:parseFloat(gw)<=maxP,minMo:Math.ceil(Math.abs(diff)/rate),maxP:parseFloat(maxP.toFixed(1)),isCut};}
 function getWeekDates(off=0){const t=new Date(),dow=t.getDay()===0?6:t.getDay()-1;const mon=new Date(t);mon.setDate(t.getDate()-dow+off*7);return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});}
 const local={async get(k){try{const r=await window.storage.get(k);return r?JSON.parse(r.value):null;}catch{return null;}},async set(k,v){try{await window.storage.set(k,JSON.stringify(v));}catch{}}};
@@ -37,17 +38,19 @@ function Chart({data=[],color,T,h=90}){if(data.length<2)return <div style={{heig
 const Card=({children,style={},onClick,T})=><div onClick={onClick} style={{background:T.card,borderRadius:18,padding:16,boxShadow:T.shadow,border:`1px solid ${T.border}`,...style,cursor:onClick?"pointer":"default"}}>{children}</div>;
 const Btn=({children,onClick,color,outline,disabled,style={}})=><button onClick={onClick} disabled={disabled} style={{width:"100%",padding:"15px",borderRadius:14,fontWeight:700,fontSize:16,cursor:disabled?"not-allowed":"pointer",transition:"opacity .15s",fontFamily:"inherit",background:disabled?"#2c2c2e":outline?"transparent":color||"#30d158",color:disabled?"#555":outline?color||"#30d158":"#000",border:outline?`1.5px solid ${color||"#30d158"}`:"none",opacity:disabled?.55:1,...style}}>{children}</button>;
 
+
 export default function App(){
-  const [theme,setTheme]=useState("dark");
+  const [theme,setTheme]=useState(()=>localStorage.getItem("mp_theme")||"dark");
   const T=theme==="dark"?DARK:LIGHT;
   const ac=T.green;
   const [screen,setScreen]=useState("loading");
+  const saveTheme=(t)=>{setTheme(t);localStorage.setItem("mp_theme",t);};
   const [atab,setAtab]=useState("login");
   const [tab,setTab]=useState("home");
   const [user,setUser]=useState(null);
   const [prof,setProf]=useState(null);
   const [form,setForm]=useState({email:"",password:""});
-  const [setup,setSetup]=useState({name:"",email:"",password:"",height:"",weight:"",goalWeight:"",goalLook:"lean_athletic",months:"12",age:"",gender:"male",activity:"moderate"});
+  const [setup,setSetup]=useState({name:"",email:"",password:"",height:"",weight:"",goalWeight:"",goalLook:"lean_athletic",months:"12",age:"",gender:"male",activity:"moderate",workoutDays:"5"});
   const [step,setStep]=useState(0);
   const [showVal,setShowVal]=useState(false);
   const [err,setErr]=useState("");
@@ -75,6 +78,7 @@ export default function App(){
   const [editId,setEditId]=useState(null);
   const [editV,setEditV]=useState("");
   const [editProf,setEditProf]=useState(false);
+  const [saveMsg,setSaveMsg]=useState("");
   const [profEdit,setProfEdit]=useState({});
 
   useEffect(()=>{
@@ -85,7 +89,15 @@ export default function App(){
 
   async function load(uid){
     try{
-      const{data:p}=await supabase.from("profiles").select("*").eq("id",uid).single();if(p)setProf(p);
+      // Restore theme
+      const savedTheme=localStorage.getItem("mp_theme");if(savedTheme)setTheme(savedTheme);
+      const{data:p,error:pe}=await supabase.from("profiles").select("*").eq("id",uid).single();
+      if(p)setProf(p);
+      else if(pe){
+        // Profile doesn't exist yet - create empty one
+        const{data:np}=await supabase.from("profiles").insert({id:uid}).select().single();
+        if(np)setProf(np);
+      }
       const{data:wl}=await supabase.from("weight_log").select("*").eq("user_id",uid).order("logged_at");if(wl)setWLog(wl.map(w=>({date:w.logged_at,weight:w.weight,id:w.id})));
       const{data:fl}=await supabase.from("food_log").select("*").eq("user_id",uid).order("logged_at");if(fl)setFLog(fl.map(f=>({...f,p:f.protein,c:f.carbs,f:f.fats,date:f.logged_at})));
       const{data:pd}=await supabase.from("prs").select("*").eq("user_id",uid).order("logged_at");if(pd){const m={};pd.forEach(p=>{if(!m[p.lift])m[p.lift]=[];m[p.lift].push({weight:p.weight,reps:p.reps,date:p.logged_at,id:p.id});});setPrs(m);}
@@ -97,13 +109,67 @@ export default function App(){
 
   async function doLogin(){setErr("");setLoading(true);const{data,error}=await supabase.auth.signInWithPassword({email:form.email,password:form.password});if(error){setErr(error.message);setLoading(false);return;}setUser(data.user);await load(data.user.id);setLoading(false);}
   async function doSignup(){setErr("");if(!setup.email||!setup.password){setErr("Email and password required.");return;}if(step===0){setStep(1);return;}if(step===1){if(!setup.height||!setup.weight||!setup.age){setErr("Fill all fields.");return;}setStep(2);return;}if(step===2){setShowVal(true);return;}}
-  async function finalize(){setErr("");setLoading(true);const{data,error}=await supabase.auth.signUp({email:setup.email,password:setup.password});if(error){setErr(error.message);setShowVal(false);setLoading(false);return;}const uid=data.user.id;await supabase.from("profiles").insert({id:uid,name:setup.name,height:parseFloat(setup.height),age:parseInt(setup.age),gender:setup.gender,current_weight:parseFloat(setup.weight),goal_weight:parseFloat(setup.goalWeight),goal_look:setup.goalLook,duration_months:parseInt(setup.months),activity_level:setup.activity});const{data:w0}=await supabase.from("weight_log").insert({user_id:uid,weight:parseFloat(setup.weight)}).select().single();setUser(data.user);setProf({name:setup.name,height:parseFloat(setup.height),age:parseInt(setup.age),gender:setup.gender,current_weight:parseFloat(setup.weight),goal_weight:parseFloat(setup.goalWeight),goal_look:setup.goalLook,duration_months:parseInt(setup.months)});if(w0)setWLog([{date:w0.logged_at,weight:w0.weight,id:w0.id}]);setLoading(false);setShowVal(false);setScreen("app");}
-  async function doForgot(){setErr("");setLoading(true);const{error}=await supabase.auth.resetPasswordForEmail(fEmail,{redirectTo:window.location.origin});if(error)setErr(error.message);else setFDone(true);setLoading(false);}
+  async function finalize(){
+    setErr("");setLoading(true);
+    const{data,error}=await supabase.auth.signUp({email:setup.email,password:setup.password});
+    if(error){setErr(error.message);setShowVal(false);setLoading(false);return;}
+    const uid=data.user.id;
+    const profData={id:uid,name:setup.name,height:parseFloat(setup.height),age:parseInt(setup.age),gender:setup.gender,current_weight:parseFloat(setup.weight),goal_weight:parseFloat(setup.goalWeight),goal_look:setup.goalLook,duration_months:parseInt(setup.months),activity_level:setup.activity,workout_days:parseInt(setup.workoutDays)||5};
+    await supabase.from("profiles").insert(profData);
+    const{data:w0}=await supabase.from("weight_log").insert({user_id:uid,weight:parseFloat(setup.weight)}).select().single();
+    // Reload profile from DB to confirm all fields saved
+    const{data:savedP}=await supabase.from("profiles").select("*").eq("id",uid).single();
+    setUser(data.user);
+    setProf(savedP||profData);
+    if(w0)setWLog([{date:w0.logged_at,weight:w0.weight,id:w0.id}]);
+    setLoading(false);setShowVal(false);setScreen("app");
+  }
+  async function doForgot(){
+    setErr("");setLoading(true);
+    const{error}=await supabase.auth.resetPasswordForEmail(fEmail,{redirectTo:window.location.origin});
+    if(error){
+      if(error.message.toLowerCase().includes("rate"))setErr("Too many requests. Wait a few minutes and try again.");
+      else if(error.message.toLowerCase().includes("not found")||error.message.toLowerCase().includes("user"))setErr("No account found with this email.");
+      else setErr("Could not send reset email. In Supabase → Auth → Settings, disable email confirmation OR set up SMTP.");
+    }else{setFDone(true);}
+    setLoading(false);
+  }
   async function logout(){await supabase.auth.signOut();setUser(null);setProf(null);setWLog([]);setFLog([]);setPrs({});setMeas([]);setDEx({});setDSup({});setScreen("auth");setForm({email:"",password:""});}
+  async function deleteAllData(){
+    if(!user)return;
+    await Promise.all([
+      supabase.from("weight_log").delete().eq("user_id",user.id),
+      supabase.from("food_log").delete().eq("user_id",user.id),
+      supabase.from("prs").delete().eq("user_id",user.id),
+      supabase.from("measurements").delete().eq("user_id",user.id),
+    ]);
+    setWLog([]);setFLog([]);setPrs({});setMeas([]);setDEx({});setDSup({});
+    await local.set(`dex_${user.id}`,{});await local.set(`dsu_${user.id}`,{});
+    setSaveMsg("✅ All data cleared!");setTimeout(()=>setSaveMsg(''),3000);
+  }
+  async function deleteAccount(){
+    if(!user)return;
+    // Delete all data first
+    await Promise.all([
+      supabase.from("weight_log").delete().eq("user_id",user.id),
+      supabase.from("food_log").delete().eq("user_id",user.id),
+      supabase.from("prs").delete().eq("user_id",user.id),
+      supabase.from("measurements").delete().eq("user_id",user.id),
+      supabase.from("profiles").delete().eq("id",user.id),
+    ]);
+    // Delete auth user via admin — since we can't call admin API from client,
+    // sign out and show message to contact admin, OR use Supabase edge function
+    // For now: sign out and clear everything
+    await supabase.auth.signOut();
+    setUser(null);setProf(null);setWLog([]);setFLog([]);setPrs({});setMeas([]);setDEx({});setDSup({});
+    setScreen("auth");setForm({email:"",password:""});
+  }
   async function logW(){if(!newW||!user)return;const{data,e}=await supabase.from("weight_log").insert({user_id:user.id,weight:parseFloat(newW)}).select().single();if(!e&&data)setWLog(prev=>[...prev,{date:data.logged_at,weight:data.weight,id:data.id}]);setNewW("");}
   async function delW(id){await supabase.from("weight_log").delete().eq("id",id);setWLog(prev=>prev.filter(w=>w.id!==id));}
   async function updW(id,val){const{error}=await supabase.from("weight_log").update({weight:parseFloat(val)}).eq("id",id);if(!error)setWLog(prev=>prev.map(w=>w.id===id?{...w,weight:parseFloat(val)}:w));setEditId(null);setEditV("");}
   async function resetW(){if(wLog.length<=1)return;for(const w of wLog.slice(1))await supabase.from("weight_log").delete().eq("id",w.id);setWLog(wLog.slice(0,1));}
+  async function resetPRs(){if(!user)return;await supabase.from("prs").delete().eq("user_id",user.id);setPrs({});}
+  async function resetMeas(){if(!user)return;await supabase.from("measurements").delete().eq("user_id",user.id);setMeas([]);}
   async function logF(){if(!selF||!fqty||!user)return;const r=parseFloat(fqty)/100;const{data,e}=await supabase.from("food_log").insert({user_id:user.id,name:selF.n,qty:parseFloat(fqty),unit:selF.unit,cal:Math.round(selF.cal*r),protein:Math.round(selF.p*r*10)/10,carbs:Math.round(selF.c*r*10)/10,fats:Math.round(selF.f*r*10)/10}).select().single();if(!e&&data)setFLog(prev=>[...prev,{...data,p:data.protein,c:data.carbs,f:data.fats,date:data.logged_at}]);setSelF(null);setFs("");setFqty("100");setFcat("All");}
   async function delF(id){await supabase.from("food_log").delete().eq("id",id);setFLog(prev=>prev.filter(f=>f.id!==id));}
   async function logPR(){if(!prW||!user)return;const{data,e}=await supabase.from("prs").insert({user_id:user.id,lift:prLift,weight:parseFloat(prW),reps:parseInt(prR)||1}).select().single();if(!e&&data)setPrs(prev=>({...prev,[prLift]:[...(prev[prLift]||[]),{weight:data.weight,reps:data.reps,date:data.logged_at,id:data.id}]}));setPrW("");setPrR("");}
@@ -111,26 +177,28 @@ export default function App(){
   async function saveProfile(){
     if(!user)return;
     const updates={
-      name:profEdit.name||p.name,
-      height:parseFloat(profEdit.height)||parseFloat(p.height),
-      age:parseInt(profEdit.age)||parseInt(p.age),
-      gender:profEdit.gender||p.gender,
-      current_weight:parseFloat(profEdit.current_weight)||parseFloat(p.current_weight),
-      goal_weight:parseFloat(profEdit.goal_weight)||parseFloat(p.goal_weight),
-      goal_look:profEdit.goal_look||p.goal_look,
-      duration_months:parseInt(profEdit.duration_months)||parseInt(p.duration_months),
-      activity_level:profEdit.activity_level||p.activity_level,
+      name:profEdit.name||p.name||"",
+      height:parseFloat(profEdit.height)||parseFloat(p.height)||170,
+      age:parseInt(profEdit.age)||parseInt(p.age)||20,
+      gender:profEdit.gender||p.gender||"male",
+      current_weight:parseFloat(profEdit.current_weight)||parseFloat(p.current_weight)||70,
+      goal_weight:parseFloat(profEdit.goal_weight)||parseFloat(p.goal_weight)||75,
+      goal_look:profEdit.goal_look||p.goal_look||"lean_athletic",
+      duration_months:parseInt(profEdit.duration_months)||parseInt(p.duration_months)||12,
+      activity_level:profEdit.activity_level||p.activity_level||"moderate",
+      workout_days:parseInt(profEdit.workout_days)||parseInt(p.workout_days)||5,
     };
-    const{error}=await supabase.from("profiles").update(updates).eq("id",user.id);
-    if(!error){
-      setProf(prev=>({...prev,...updates}));
+    const{data:saved,error}=await supabase.from("profiles").upsert({...updates,id:user.id},{onConflict:"id"}).select().single();
+    if(error){console.error("Profile save error:",error);setSaveMsg("❌ Save failed: "+error.message);setTimeout(()=>setSaveMsg(''),4000);return;}
+    if(saved){
+      setProf(saved);
       // If weight changed, log new weight entry
       if(profEdit.current_weight&&parseFloat(profEdit.current_weight)!==parseFloat(p.current_weight)){
         const{data:w0}=await supabase.from("weight_log").insert({user_id:user.id,weight:parseFloat(profEdit.current_weight)}).select().single();
         if(w0)setWLog(prev=>[...prev,{date:w0.logged_at,weight:w0.weight,id:w0.id}]);
       }
     }
-    setEditProf(false);setProfEdit({});
+    setEditProf(false);setProfEdit({});setSaveMsg('✅ Profile saved!');setTimeout(()=>setSaveMsg(''),3000);
   }
   async function togEx(k){const u={...dEx,[k]:!dEx[k]};setDEx(u);await local.set(`dex_${user?.id}`,u);}
   async function togSup(k){const u={...dSup,[k]:!dSup[k]};setDSup(u);await local.set(`dsu_${user?.id}`,u);}
@@ -140,8 +208,55 @@ export default function App(){
   const gw=parseFloat(p.goal_weight)||75;
   const dur=parseInt(p.duration_months)||12;
   const mode=gw<cw?"cut":"bulk";
-  const nut=calcNut(cw,parseFloat(p.height)||170,parseInt(p.age)||21,p.gender||"male",mode);
-  const wo=dur>=10?WO.intermediate:WO.beginner;
+  const nut=calcNut(cw,parseFloat(p.height)||170,parseInt(p.age)||21,p.gender||"male",mode,p.activity_level||"moderate");
+  const wdays=parseInt(p.workout_days)||5;
+  const wo=(function(d){
+    if(d>=6)return{name:"PPL 6-Day",days:[
+      {d:"Mon",f:"Push — Heavy",tag:"PUSH",ex:["Bench Press 5×5","Incline Press 4×8","OHP 4×8","Lateral Raise 5×15","Tricep Dips 3×fail"]},
+      {d:"Tue",f:"Pull — Heavy",tag:"PULL",ex:["Deadlift 5×5","Weighted Pull-ups 4×6","Barbell Row 4×8","Face Pull 4×15","Barbell Curl 4×10"]},
+      {d:"Wed",f:"Legs — Heavy",tag:"LEGS",ex:["Squat 5×5","Romanian DL 4×8","Leg Press 5×10","Leg Curl 4×12","Calf Raises 5×20"]},
+      {d:"Thu",f:"Push — Volume",tag:"PUSH",ex:["DB Bench 4×12","Cable Flyes 4×15","Lateral Raise 6×15","Arnold Press 4×12","Pushdown 4×15"]},
+      {d:"Fri",f:"Pull — Volume",tag:"PULL",ex:["Lat Pulldown 4×12","Seated Row 4×12","Incline Curl 4×12","Rear Delt Fly 4×15","Face Pull 3×15"]},
+      {d:"Sat",f:"Legs & Arms",tag:"BOTH",ex:["Hack Squat 4×12","Lunges 3×20","EZ Curl 5×12","Skull Crushers 4×12","Cable Curl 3×15"]},
+      {d:"Sun",f:"Full Rest",tag:"REST",ex:["Sleep 8+ hrs","Eat all macros","Passive recovery"]},
+    ]};
+    if(d===5)return{name:"5-Day Split",days:[
+      {d:"Mon",f:"Chest & Triceps",tag:"PUSH",ex:["Bench Press 4×8","Incline DB Press 3×10","Cable Flyes 3×12","Tricep Pushdown 3×12","Overhead Ext 3×12"]},
+      {d:"Tue",f:"Back & Biceps",tag:"PULL",ex:["Deadlift 4×5","Lat Pulldown 4×10","Seated Row 3×10","Barbell Curl 3×12","Hammer Curl 3×12"]},
+      {d:"Wed",f:"Legs",tag:"LEGS",ex:["Squat 4×8","Leg Press 3×12","Romanian DL 3×10","Leg Curl 3×12","Calf Raises 4×20"]},
+      {d:"Thu",f:"Shoulders & Core",tag:"PUSH",ex:["OHP 4×8","Lateral Raise 4×15","Front Raise 3×12","Plank 3×45s","Crunches 3×20"]},
+      {d:"Fri",f:"Arms & Abs",tag:"ARMS",ex:["EZ Curl 4×10","Preacher Curl 3×12","Skull Crushers 3×12","Dips 3×fail","Plank 3×60s"]},
+      {d:"Sat",f:"Active Rest",tag:"REST",ex:["Light cardio 20 min","Stretching 15 min","Foam rolling"]},
+      {d:"Sun",f:"Full Rest",tag:"REST",ex:["Sleep 8+ hrs","Eat all macros","Recover fully"]},
+    ]};
+    if(d===4)return{name:"Upper/Lower 4-Day",days:[
+      {d:"Mon",f:"Upper — Strength",tag:"UPPER",ex:["Bench Press 4×6","Barbell Row 4×6","OHP 3×8","Pull-ups 3×8","Barbell Curl 3×10"]},
+      {d:"Tue",f:"Lower — Strength",tag:"LOWER",ex:["Squat 4×6","Romanian DL 4×8","Leg Press 3×10","Leg Curl 3×12","Calf Raises 4×15"]},
+      {d:"Wed",f:"Rest",tag:"REST",ex:["Walk 20 min","Stretch","Recover"]},
+      {d:"Thu",f:"Upper — Volume",tag:"UPPER",ex:["Incline DB Press 4×10","Lat Pulldown 4×12","Lateral Raise 4×15","Dumbbell Row 3×12","Tricep Pushdown 3×15"]},
+      {d:"Fri",f:"Lower — Volume",tag:"LOWER",ex:["Hack Squat 4×10","Walking Lunges 3×16","Leg Ext 3×12","Leg Curl 3×12","Calf Raises 4×20"]},
+      {d:"Sat",f:"Rest",tag:"REST",ex:["Light cardio","Stretching","Foam roll"]},
+      {d:"Sun",f:"Rest",tag:"REST",ex:["Sleep 8+ hrs","Meal prep","Recover"]},
+    ]};
+    if(d===3)return{name:"Full Body 3-Day",days:[
+      {d:"Mon",f:"Full Body A",tag:"FULL",ex:["Squat 3×8","Bench Press 3×8","Barbell Row 3×8","OHP 3×10","Plank 3×45s"]},
+      {d:"Tue",f:"Rest",tag:"REST",ex:["Light walk","Stretch"]},
+      {d:"Wed",f:"Full Body B",tag:"FULL",ex:["Deadlift 3×5","Incline Press 3×10","Pull-ups 3×fail","Lateral Raise 3×15","Crunches 3×20"]},
+      {d:"Thu",f:"Rest",tag:"REST",ex:["Light cardio","Foam roll"]},
+      {d:"Fri",f:"Full Body C",tag:"FULL",ex:["Front Squat 3×8","DB Bench 3×10","Lat Pulldown 3×10","Face Pull 3×15","Plank 3×60s"]},
+      {d:"Sat",f:"Rest",tag:"REST",ex:["Active recovery","Stretching"]},
+      {d:"Sun",f:"Rest",tag:"REST",ex:["Sleep 8+ hrs","Eat macros"]},
+    ]};
+    return{name:"Full Body 2-Day",days:[
+      {d:"Mon",f:"Full Body",tag:"FULL",ex:["Squat 3×10","Bench Press 3×10","Deadlift 3×8","OHP 3×10","Plank 3×45s"]},
+      {d:"Tue",f:"Rest",tag:"REST",ex:["Light walk","Stretch"]},
+      {d:"Wed",f:"Rest",tag:"REST",ex:["Light cardio"]},
+      {d:"Thu",f:"Full Body",tag:"FULL",ex:["Leg Press 3×12","DB Bench 3×12","Lat Pulldown 3×12","Lateral Raise 3×15","Core circuit"]},
+      {d:"Fri",f:"Rest",tag:"REST",ex:["Stretch","Foam roll"]},
+      {d:"Sat",f:"Rest",tag:"REST",ex:["Active recovery"]},
+      {d:"Sun",f:"Rest",tag:"REST",ex:["Sleep 8+ hrs","Eat all macros"]},
+    ]};
+  })(wdays);
   const todDow=new Date().getDay()===0?6:new Date().getDay()-1;
   const todWO=wo.days[todDow];
   const wkDates=getWeekDates(weekOff);
@@ -157,14 +272,19 @@ export default function App(){
   const sw=parseFloat(p.current_weight)||cw;
   const prog=gw===sw?0:Math.min(100,Math.max(0,Math.round(Math.abs(cw-sw)/Math.abs(gw-sw)*100)));
 
-  const IS={background:"#1c1c1c",border:"1.5px solid #2c2c2e",borderRadius:12,padding:"12px 14px",color:"#fff",fontFamily:"inherit",fontSize:15};
+  const IS={background:theme==="dark"?"#1c1c1c":"#f2f2f7",border:`1.5px solid ${theme==="dark"?"#2c2c2e":"#d1d1d6"}`,borderRadius:12,padding:"12px 14px",color:theme==="dark"?"#fff":"#000",fontFamily:"inherit",fontSize:15};
   const IS2={...IS,background:T.inputBg,border:`1.5px solid ${T.inputBorder}`,color:T.text};
 
-  if(screen==="loading")return<div style={{minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:20}}><div style={{fontSize:48}}>⚡</div><Spin/></div>;
+  if(screen==="loading")return(
+    <div style={{minHeight:"100vh",background:"#000",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:24}}>
+      <div style={{fontSize:42,fontWeight:900,letterSpacing:-2,background:"linear-gradient(135deg,#1a8a3a,#1a3a8a)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>myPhysique</div>
+      <Spin color="#30d158"/>
+    </div>
+  );
 
   if(screen==="auth"){
     if(showVal){const vr=isReal(setup.weight,setup.goalWeight,setup.months);return(
-      <div style={{minHeight:"100vh",background:"#000",color:"#fff",fontFamily:"'Inter',sans-serif",overflowY:"auto",padding:"36px 20px 40px"}}>
+      <div style={{minHeight:"100vh",background:theme==="dark"?"#000":"#f2f2f7",color:theme==="dark"?"#fff":"#000",fontFamily:"'Inter',sans-serif",overflowY:"auto",padding:"36px 20px 40px"}}>
         <div style={{maxWidth:420,margin:"0 auto"}}>
           <button onClick={()=>setShowVal(false)} style={{background:"transparent",border:"none",color:DARK.green,fontSize:15,cursor:"pointer",fontFamily:"inherit",marginBottom:24,padding:0}}>← Back</button>
           <div style={{textAlign:"center",marginBottom:28}}><div style={{fontSize:56,marginBottom:10}}>{vr.ok?"✅":"⚠️"}</div><h2 style={{fontSize:26,fontWeight:800,color:vr.ok?DARK.green:DARK.gold,marginBottom:6}}>{vr.ok?"Goal is Achievable!":"Let's Adjust"}</h2><p style={{color:"#636366",fontSize:14}}>Honest assessment of your plan</p></div>
@@ -183,9 +303,19 @@ export default function App(){
     );}
 
     return(
-      <div style={{minHeight:"100vh",background:"#000",color:"#fff",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px",overflowY:"auto"}}>
-        <div style={{width:"100%",maxWidth:400,paddingTop:20}} className="fu">
-          <div style={{textAlign:"center",marginBottom:36}}><div style={{fontSize:48,marginBottom:10}}>⚡</div><h1 style={{fontSize:34,fontWeight:900,letterSpacing:-1,marginBottom:6}}>Physique</h1><p style={{color:"#636366",fontSize:14}}>Your transformation tracker</p></div>
+      <div style={{minHeight:"100vh",background:theme==="dark"?"#000":"#f2f2f7",color:theme==="dark"?"#fff":"#000",fontFamily:"'Inter',sans-serif",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px",overflowY:"auto"}}>
+        <div style={{width:"100%",maxWidth:400,paddingTop:16}} className="fu">
+          <div style={{display:"flex",justifyContent:"flex-end",marginBottom:16}}>
+            <div onClick={()=>saveTheme(theme==="dark"?"light":"dark")} style={{width:48,height:26,borderRadius:999,background:theme==="dark"?"#2c2c2e":"#d1d1d6",cursor:"pointer",position:"relative",transition:"background .3s",flexShrink:0,border:"none",display:"flex",alignItems:"center",padding:"2px"}}>
+              <div style={{position:"absolute",left:theme==="dark"?2:24,width:22,height:22,borderRadius:"50%",background:theme==="dark"?"#48484a":"#fff",boxShadow:"0 1px 4px rgba(0,0,0,0.25)",transition:"left .28s cubic-bezier(.34,1.56,.64,1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11}}>
+                {theme==="dark"?"🌙":"☀️"}
+              </div>
+            </div>
+          </div>
+          <div style={{textAlign:"center",marginBottom:28}}>
+            <div style={{fontSize:42,fontWeight:900,letterSpacing:-2,background:"linear-gradient(135deg,#1a8a3a,#1a3a8a)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>myPhysique</div>
+            <p style={{color:theme==="dark"?"#636366":LIGHT.muted,fontSize:14,marginTop:8}}>Your transformation tracker</p>
+          </div>
           {forgot?(
             <div className="fu">
               <h2 style={{fontSize:22,fontWeight:700,marginBottom:6}}>Reset Password</h2>
@@ -199,40 +329,47 @@ export default function App(){
             </div>
           ):(
             <>
-              <div style={{display:"flex",background:"#111",borderRadius:14,padding:4,marginBottom:26}}>
-                {["login","signup"].map(m=><button key={m} onClick={()=>{setAtab(m);setStep(0);setErr("");}} style={{flex:1,padding:"11px",border:"none",borderRadius:11,background:atab===m?"#2c2c2e":"transparent",color:atab===m?"#fff":"#636366",fontWeight:600,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all .2s",textTransform:"capitalize"}}>{m==="login"?"Sign In":"Sign Up"}</button>)}
+              <div style={{display:"flex",background:theme==="dark"?"#1c1c1e":"#e5e5ea",borderRadius:14,padding:4,marginBottom:26,border:`1px solid ${theme==="dark"?"#2c2c2e":"#d1d1d6"}`}}>
+                {["login","signup"].map(m=><button key={m} onClick={()=>{setAtab(m);setStep(0);setErr("");}} style={{flex:1,padding:"11px",border:"none",borderRadius:11,background:atab===m?(theme==="dark"?"#3a3a3c":"#fff"):"transparent",color:atab===m?(theme==="dark"?"#fff":"#000"):(theme==="dark"?"#636366":"#8e8e93"),fontWeight:600,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all .2s",textTransform:"capitalize"}}>{m==="login"?"Sign In":"Sign Up"}</button>)}
               </div>
               {atab==="login"?(
                 <div className="fu">
-                  <div style={{marginBottom:14}}><div style={{fontSize:13,fontWeight:500,color:"#636366",marginBottom:6}}>Email</div><input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="your@email.com" type="email" style={{...IS,width:"100%"}}/></div>
-                  <div style={{marginBottom:6}}><div style={{fontSize:13,fontWeight:500,color:"#636366",marginBottom:6}}>Password</div><input value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder="••••••••" type="password" style={{...IS,width:"100%"}}/></div>
-                  <button onClick={()=>{setForgot(true);setErr("");}} style={{background:"transparent",border:"none",color:DARK.green,fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:18,padding:0}}>Forgot password?</button>
+                  <div style={{marginBottom:14}}><div style={{fontSize:13,fontWeight:500,color:theme==="dark"?"#636366":"#8e8e93",marginBottom:6}}>Email</div><input value={form.email} onChange={e=>setForm({...form,email:e.target.value})} placeholder="your@email.com" type="email" style={{...IS,width:"100%"}}/></div>
+                  <div style={{marginBottom:6}}><div style={{fontSize:13,fontWeight:500,color:theme==="dark"?"#636366":"#8e8e93",marginBottom:6}}>Password</div><input value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder="••••••••" type="password" style={{...IS,width:"100%"}}/></div>
+                  <button onClick={()=>{setForgot(true);setErr("");}} style={{background:"transparent",border:"none",color:"#1a8a3a",fontSize:14,cursor:"pointer",fontFamily:"inherit",marginBottom:18,padding:0}}>Forgot password?</button>
                   {err&&<div style={{fontSize:13,color:DARK.red,marginBottom:12}}>{err}</div>}
                   <Btn onClick={doLogin} color={DARK.green} disabled={loading}>{loading?<Spin/>:"Sign In"}</Btn>
                 </div>
               ):(
                 <div className="fu">
-                  <div style={{display:"flex",gap:5,marginBottom:22}}>{[0,1,2].map(i=><div key={i} style={{flex:1,height:3.5,borderRadius:999,background:i<=step?DARK.green:"#222",transition:"background .3s"}}/>)}</div>
-                  <div style={{fontSize:11,color:"#636366",marginBottom:14,letterSpacing:.8,textTransform:"uppercase",fontWeight:600}}>Step {step+1} of 3</div>
+                  <div style={{display:"flex",gap:5,marginBottom:22}}>{[0,1,2].map(i=><div key={i} style={{flex:1,height:3.5,borderRadius:999,background:i<=step?DARK.green:(theme==="dark"?"#222":"#d1d1d6"),transition:"background .3s"}}/>)}</div>
+                  <div style={{fontSize:11,color:theme==="dark"?"#636366":"#8e8e93",marginBottom:14,letterSpacing:.8,textTransform:"uppercase",fontWeight:600}}>Step {step+1} of 3</div>
                   {step===0&&<div className="fu">
                     {[{l:"Name",k:"name",ph:"Your name"},{l:"Email *",k:"email",ph:"your@email.com",t:"email"},{l:"Password *",k:"password",ph:"Min 6 characters",t:"password"}].map(f=><div key={f.k} style={{marginBottom:14}}><div style={{fontSize:13,fontWeight:500,color:"#636366",marginBottom:6}}>{f.l}</div><input value={setup[f.k]} onChange={e=>setSetup({...setup,[f.k]:e.target.value})} placeholder={f.ph} type={f.t||"text"} style={{...IS,width:"100%"}}/></div>)}
                   </div>}
                   {step===1&&<div className="fu">
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                      <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Age *</div><input value={setup.age} onChange={e=>setSetup({...setup,age:e.target.value})} placeholder="21" type="number" style={{...IS,width:"100%"}}/></div>
+                      <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Age *</div><input value={setup.age} onChange={e=>setSetup({...setup,age:e.target.value})} placeholder="e.g. 20" type="number" style={{...IS,width:"100%"}}/></div>
                       <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Gender</div><select value={setup.gender} onChange={e=>setSetup({...setup,gender:e.target.value})} style={{...IS,width:"100%",appearance:"none"}}><option value="male">Male</option><option value="female">Female</option></select></div>
-                      <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Height (cm) *</div><input value={setup.height} onChange={e=>setSetup({...setup,height:e.target.value})} placeholder="173" type="number" style={{...IS,width:"100%"}}/></div>
-                      <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Weight (kg) *</div><input value={setup.weight} onChange={e=>setSetup({...setup,weight:e.target.value})} placeholder="65" type="number" style={{...IS,width:"100%"}}/></div>
+                      <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Height (cm) *</div><input value={setup.height} onChange={e=>setSetup({...setup,height:e.target.value})} placeholder="e.g. 170" type="number" style={{...IS,width:"100%"}}/></div>
+                      <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Weight (kg) *</div><input value={setup.weight} onChange={e=>setSetup({...setup,weight:e.target.value})} placeholder="e.g. 65" type="number" style={{...IS,width:"100%"}}/></div>
                     </div>
                     <div style={{marginTop:4}}><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Activity Level</div><select value={setup.activity} onChange={e=>setSetup({...setup,activity:e.target.value})} style={{...IS,width:"100%",appearance:"none"}}><option value="sedentary">Sedentary (desk job)</option><option value="light">Light (1-3x/week)</option><option value="moderate">Moderate (3-5x/week)</option><option value="active">Very active (6-7x/week)</option></select></div>
                   </div>}
                   {step===2&&<div className="fu">
+                    <div style={{marginBottom:16}}>
+                      <div style={{fontSize:12,color:"#636366",marginBottom:8,fontWeight:600}}>How many days can you workout per week? *</div>
+                      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6}}>
+                        {[2,3,4,5,6].map(d=><button key={d} onClick={()=>setSetup({...setup,workoutDays:String(d)})} style={{padding:"12px 18px",borderRadius:12,border:`1.5px solid ${setup.workoutDays===String(d)?"#30d158":"#333"}`,background:setup.workoutDays===String(d)?"rgba(48,209,88,.1)":(theme==="dark"?"#111":"#e5e5ea"),color:setup.workoutDays===String(d)?"#30d158":"#888",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit",transition:"all .2s",flex:1}}>{d}</button>)}
+                      </div>
+                      <div style={{fontSize:12,color:"#30d158",fontWeight:600,textAlign:"center",background:"rgba(48,209,88,.07)",borderRadius:10,padding:"8px"}}>{{"2":"Full Body 2-Day","3":"Full Body 3-Day","4":"Upper / Lower 4-Day","5":"5-Day Split","6":"PPL 6-Day"}[setup.workoutDays]||"5-Day Split"}</div>
+                    </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:4}}>
                       <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Goal Weight (kg) *</div><input value={setup.goalWeight} onChange={e=>setSetup({...setup,goalWeight:e.target.value})} placeholder="75" type="number" style={{...IS,width:"100%"}}/></div>
                       <div><div style={{fontSize:12,color:"#636366",marginBottom:5}}>Duration (months) *</div><input value={setup.months} onChange={e=>setSetup({...setup,months:e.target.value})} placeholder="12" type="number" style={{...IS,width:"100%"}}/></div>
                     </div>
                     <div style={{fontSize:13,fontWeight:500,color:"#636366",marginBottom:10}}>How do you want to look? *</div>
-                    {GOALS.map(g=><div key={g.id} onClick={()=>setSetup({...setup,goalLook:g.id})} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",borderRadius:14,border:`1.5px solid ${setup.goalLook===g.id?DARK.green:"#222"}`,background:setup.goalLook===g.id?"rgba(48,209,88,.06)":"#111",marginBottom:8,cursor:"pointer",transition:"all .2s"}}><span style={{fontSize:20}}>{g.icon}</span><div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:setup.goalLook===g.id?DARK.green:"#fff"}}>{g.label}</div><div style={{fontSize:11,color:"#636366"}}>{g.desc} · {g.bf}</div></div>{setup.goalLook===g.id&&<div style={{width:20,height:20,borderRadius:"50%",background:DARK.green,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#000",fontWeight:700}}>✓</div>}</div>)}
+                    {GOALS.map(g=><div key={g.id} onClick={()=>setSetup({...setup,goalLook:g.id})} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 14px",borderRadius:14,border:`1.5px solid ${setup.goalLook===g.id?DARK.green:"#222"}`,background:setup.goalLook===g.id?"rgba(48,209,88,.06)":(theme==="dark"?"#111":"#fff"),marginBottom:8,cursor:"pointer",transition:"all .2s"}}><span style={{fontSize:20}}>{g.icon}</span><div style={{flex:1}}><div style={{fontSize:14,fontWeight:600,color:setup.goalLook===g.id?DARK.green:(theme==="dark"?"#fff":"#000")}}>{g.label}</div><div style={{fontSize:11,color:"#636366"}}>{g.desc} · {g.bf}</div></div>{setup.goalLook===g.id&&<div style={{width:20,height:20,borderRadius:"50%",background:DARK.green,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:"#000",fontWeight:700}}>✓</div>}</div>)}
                   </div>}
                   {err&&<div style={{fontSize:13,color:DARK.red,marginBottom:12,marginTop:4}}>{err}</div>}
                   <Btn onClick={doSignup} color={DARK.green} disabled={loading}>{loading?<Spin/>:step<2?"Continue →":"Check My Goal →"}</Btn>
@@ -253,7 +390,7 @@ export default function App(){
   return(
     <div style={{minHeight:"100vh",background:T.bg,fontFamily:"'Inter',sans-serif",color:T.text,paddingBottom:88}}>
       <div style={{background:T.tabBar,borderBottom:`1px solid ${T.border}`,padding:"14px 20px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:50,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)"}}>
-        <div><h1 style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:T.text,margin:0}}>Physique</h1><div style={{fontSize:11,color:T.muted,marginTop:1,fontWeight:500}}>{p.name||"Athlete"} · {mode==="cut"?"Cutting 🔪":"Bulking 💪"}</div></div>
+        <div><h1 style={{fontSize:22,fontWeight:900,letterSpacing:-1,color:T.text,margin:0}}>myPhysique</h1><div style={{fontSize:11,color:T.muted,marginTop:1,fontWeight:500}}>{p.name||"Athlete"} · {mode==="cut"?"Cutting 🔪":"Bulking 💪"}</div></div>
         <div style={{textAlign:"right"}}><div style={{fontSize:24,fontWeight:900,color:ac,letterSpacing:-1}}>{cw}<span style={{fontSize:14,fontWeight:500,color:T.muted}}> kg</span></div><div style={{fontSize:11,color:T.muted}}>BMI {bmi(cw,parseFloat(p.height)||170)}</div></div>
       </div>
       <div style={{maxWidth:640,margin:"0 auto",padding:"14px 14px"}}>
@@ -386,18 +523,24 @@ export default function App(){
             </div>
           </Card>
           <Card T={T} style={{marginBottom:14}}>
-            <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Personal Records 🏆</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:T.text}}>Personal Records 🏆</div>
+            <button onClick={()=>{if(window.confirm("Reset ALL personal records?"))resetPRs();}} style={{background:`${T.red}12`,border:`1px solid ${T.red}25`,borderRadius:8,padding:"5px 12px",color:T.red,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Reset All</button>
+          </div>
             <select value={prLift} onChange={e=>setPrLift(e.target.value)} style={{width:"100%",...IS2,marginBottom:10,appearance:"none"}}>{PR_LIFTS.map(l=><option key={l} value={l}>{l}</option>)}</select>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
               <input value={prW} onChange={e=>setPrW(e.target.value)} placeholder="Weight (kg)" type="number" step=".5" style={IS2}/>
               <input value={prR} onChange={e=>setPrR(e.target.value)} placeholder="Reps" type="number" style={IS2}/>
             </div>
             <Btn onClick={logPR} color={T.gold} style={{color:"#000",marginBottom:12}}>🏆 Log PR</Btn>
-            {PR_LIFTS.filter(l=>prs[l]?.length>0).map(l=>{const best=prs[l].reduce((a,b)=>a.weight>b.weight?a:b);return<div key={l} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.muted,fontWeight:500}}>{l}</span><span style={{fontSize:14,fontWeight:800,color:T.gold}}>🏆 {best.weight}kg × {best.reps}</span></div>;})}
+            {PR_LIFTS.filter(l=>prs[l]?.length>0).map(l=>{const best=prs[l].reduce((a,b)=>a.weight>b.weight?a:b);return<div key={l} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.muted,fontWeight:500}}>{l}</span><div style={{textAlign:"right"}}><div style={{fontSize:14,fontWeight:800,color:T.gold}}>🏆 {best.weight}kg</div><div style={{fontSize:11,color:T.muted,marginTop:1}}>× {best.reps} reps</div></div></div>;})}
             {Object.keys(prs).length===0&&<p style={{color:T.muted,fontSize:12,textAlign:"center",marginTop:8}}>Log your first PR!</p>}
           </Card>
           <Card T={T}>
-            <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Body Measurements 📏</div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:700,color:T.text}}>Body Measurements 📏</div>
+            <button onClick={()=>{if(window.confirm("Reset all measurements?"))resetMeas();}} style={{background:`${T.red}12`,border:`1px solid ${T.red}25`,borderRadius:8,padding:"5px 12px",color:T.red,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Reset All</button>
+          </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
               {["Chest (cm)","Waist (cm)","Arms (cm)","Thighs (cm)","Shoulders (cm)","Hips (cm)"].map(m=><div key={m}><div style={{fontSize:11,color:T.muted,fontWeight:500,marginBottom:5}}>{m}</div><input value={mIn[m]||""} onChange={e=>setMIn({...mIn,[m]:e.target.value})} placeholder="cm" type="number" step=".5" style={{width:"100%",...IS2}}/></div>)}
             </div>
@@ -433,7 +576,13 @@ export default function App(){
                   <select value={profEdit.gender||"male"} onChange={e=>setProfEdit(prev=>({...prev,gender:e.target.value}))} style={{width:"100%",...IS2,appearance:"none"}}><option value="male">Male</option><option value="female">Female</option></select>
                 </div>
                 <div style={{marginBottom:10}}>
-                  <div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:5}}>Activity Level</div>
+                  <div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:8}}>Workout Days/Week</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
+                    {[2,3,4,5,6].map(d=><button key={d} onClick={()=>setProfEdit(prev=>({...prev,workout_days:String(d)}))} style={{padding:"9px 0",borderRadius:10,border:`1.5px solid ${(profEdit.workout_days||String(wdays))===String(d)?ac:T.border2}`,background:(profEdit.workout_days||String(wdays))===String(d)?`${ac}15`:T.card2,color:(profEdit.workout_days||String(wdays))===String(d)?ac:T.muted,fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit",flex:1}}>{d}</button>)}
+                  </div>
+                  <div style={{fontSize:11,color:ac,fontWeight:600,textAlign:"center",background:`${ac}08`,borderRadius:8,padding:"6px",marginBottom:10}}>{{"2":"Full Body 2-Day","3":"Full Body 3-Day","4":"Upper/Lower 4-Day","5":"5-Day Split","6":"PPL 6-Day"}[profEdit.workout_days||String(wdays)]}</div>
+                </div>
+                <div style={{marginBottom:10}}><div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:5}}>Activity Level</div>
                   <select value={profEdit.activity_level||"moderate"} onChange={e=>setProfEdit(prev=>({...prev,activity_level:e.target.value}))} style={{width:"100%",...IS2,appearance:"none"}}><option value="sedentary">Sedentary</option><option value="light">Light (1-3x/week)</option><option value="moderate">Moderate (3-5x/week)</option><option value="active">Very active (6-7x/week)</option></select>
                 </div>
                 <div style={{marginBottom:14}}>
@@ -441,10 +590,11 @@ export default function App(){
                   {GOALS.map(g=><div key={g.id} onClick={()=>setProfEdit(prev=>({...prev,goal_look:g.id}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:`1.5px solid ${(profEdit.goal_look||p.goal_look)===g.id?ac:"#222"}`,background:(profEdit.goal_look||p.goal_look)===g.id?`${ac}08`:"transparent",marginBottom:6,cursor:"pointer",transition:"all .2s"}}><span style={{fontSize:16}}>{g.icon}</span><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:(profEdit.goal_look||p.goal_look)===g.id?ac:T.text}}>{g.label}</div><div style={{fontSize:10,color:T.muted}}>{g.desc}</div></div>{(profEdit.goal_look||p.goal_look)===g.id&&<div style={{width:18,height:18,borderRadius:"50%",background:ac,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#000",fontWeight:700}}>✓</div>}</div>)}
                 </div>
                 <Btn onClick={saveProfile} color={ac} style={{color:"#000"}}>Save Changes ✓</Btn>
+                {saveMsg&&<div style={{textAlign:"center",fontSize:13,color:ac,marginTop:10,fontWeight:600}}>{saveMsg}</div>}
               </div>
             ):(
               <div>
-                {[{l:"Name",v:p.name||"—"},{l:"Current Weight",v:`${cw} kg`},{l:"Goal Weight",v:`${gw} kg`},{l:"Goal Look",v:GOALS.find(g=>g.id===p.goal_look)?.label||"—"},{l:"Duration",v:`${dur} months`},{l:"Daily Calories",v:`${nut.cals} kcal`},{l:"Daily Protein",v:`${nut.protein}g`},{l:"Workout Split",v:wo.name}].map(s=>(
+                {[{l:"Name",v:p.name||"—"},{l:"Current Weight",v:`${cw} kg`},{l:"Goal Weight",v:`${gw} kg`},{l:"Goal Look",v:GOALS.find(g=>g.id===p.goal_look)?.label||"—"},{l:"Duration",v:`${dur} months`},{l:"Workout Days",v:`${wdays} days (${wo.name})`},{l:"Workout Plan",v:wo.name},{l:"Daily Calories",v:`${nut.cals} kcal`},{l:"Daily Protein",v:`${nut.protein}g`}].map(s=>(
                   <div key={s.l} style={{display:"flex",justifyContent:"space-between",padding:"11px 0",borderBottom:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.muted,fontWeight:500}}>{s.l}</span><span style={{fontSize:13,fontWeight:700,color:T.text}}>{s.v}</span></div>
                 ))}
               </div>
@@ -453,16 +603,25 @@ export default function App(){
           <Card T={T} style={{marginBottom:14}}>
             <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Appearance</div>
             <div style={{display:"flex",background:T.card2,borderRadius:12,padding:4,border:`1px solid ${T.border}`}}>
-              {["dark","light"].map(m=><button key={m} onClick={()=>setTheme(m)} style={{flex:1,padding:"11px",border:"none",borderRadius:9,background:theme===m?T.bg2:"transparent",color:theme===m?T.text:T.muted,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all .2s",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{m==="dark"?"🌙 Dark":"☀️ Light"}</button>)}
+              {["dark","light"].map(m=><button key={m} onClick={()=>saveTheme(m)} style={{flex:1,padding:"11px",border:"none",borderRadius:9,background:theme===m?T.bg2:"transparent",color:theme===m?T.text:T.muted,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:"inherit",transition:"all .2s",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>{m==="dark"?"🌙 Dark":"☀️ Light"}</button>)}
             </div>
           </Card>
+          {saveMsg&&<div style={{background:saveMsg.startsWith("❌")?`${T.red}12`:`${T.green}12`,border:`1px solid ${saveMsg.startsWith("❌")?T.red+"30":T.green+"30"}`,borderRadius:12,padding:"12px 14px",fontSize:13,fontWeight:600,color:saveMsg.startsWith("❌")?T.red:T.green,marginBottom:14,textAlign:"center"}}>{saveMsg}</div>}
           <Card T={T} style={{marginBottom:14}}>
             <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Supplement Guide</div>
             {[{n:"Creatine Monohydrate",p:"5g daily — most important",c:T.red},{n:"Whey Protein",p:"Post-workout, 25–30g",c:T.orange},{n:"Omega-3 Fish Oil",p:"2 caps with food",c:T.teal},{n:"Multivitamin",p:"Morning with breakfast",c:ac},{n:"Ashwagandha KSM-66",p:"300mg morning & night",c:T.purple}].map((s,i)=>(
               <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:`1px solid ${T.border}`}}><div><div style={{fontSize:13,fontWeight:600,color:T.text}}>{s.n}</div><div style={{fontSize:11,color:T.muted,marginTop:2}}>{s.p}</div></div><div style={{width:8,height:8,borderRadius:"50%",background:s.c,flexShrink:0}}/></div>
             ))}
           </Card>
-          <button onClick={logout} style={{width:"100%",padding:"16px",borderRadius:14,background:`${T.red}10`,border:`1px solid ${T.red}25`,color:T.red,fontWeight:700,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>Log Out</button>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
+          <button onClick={()=>{if(window.confirm("Delete ALL your logged data? (weight, food, PRs, measurements)\n\nThis cannot be undone."))deleteAllData();}} style={{width:"100%",padding:"15px",borderRadius:14,background:`${T.orange}10`,border:`1px solid ${T.orange}25`,color:T.orange,fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            🗑️ Delete All My Data
+          </button>
+          <button onClick={()=>{if(window.confirm("Delete your account permanently?\n\nAll your data will be erased. This cannot be undone."))deleteAccount();}} style={{width:"100%",padding:"15px",borderRadius:14,background:`${T.red}10`,border:`1px solid ${T.red}25`,color:T.red,fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+            ⚠️ Delete Account
+          </button>
+        </div>
+        <button onClick={logout} style={{width:"100%",padding:"16px",borderRadius:14,background:T.dim,border:`1px solid ${T.border}`,color:T.muted,fontWeight:700,fontSize:16,cursor:"pointer",fontFamily:"inherit"}}>Log Out</button>
         </div>}
 
       </div>

@@ -74,6 +74,8 @@ export default function App(){
   const [mIn,setMIn]=useState({});
   const [editId,setEditId]=useState(null);
   const [editV,setEditV]=useState("");
+  const [editProf,setEditProf]=useState(false);
+  const [profEdit,setProfEdit]=useState({});
 
   useEffect(()=>{
     supabase.auth.getSession().then(({data:{session}})=>{if(session?.user){setUser(session.user);load(session.user.id);}else setScreen("auth");});
@@ -106,6 +108,30 @@ export default function App(){
   async function delF(id){await supabase.from("food_log").delete().eq("id",id);setFLog(prev=>prev.filter(f=>f.id!==id));}
   async function logPR(){if(!prW||!user)return;const{data,e}=await supabase.from("prs").insert({user_id:user.id,lift:prLift,weight:parseFloat(prW),reps:parseInt(prR)||1}).select().single();if(!e&&data)setPrs(prev=>({...prev,[prLift]:[...(prev[prLift]||[]),{weight:data.weight,reps:data.reps,date:data.logged_at,id:data.id}]}));setPrW("");setPrR("");}
   async function saveMs(){if(!user)return;const{data,e}=await supabase.from("measurements").insert({user_id:user.id,data:mIn}).select().single();if(!e&&data)setMeas(prev=>[...prev,{...data.data,date:data.logged_at,id:data.id}]);setMIn({});}
+  async function saveProfile(){
+    if(!user)return;
+    const updates={
+      name:profEdit.name||p.name,
+      height:parseFloat(profEdit.height)||parseFloat(p.height),
+      age:parseInt(profEdit.age)||parseInt(p.age),
+      gender:profEdit.gender||p.gender,
+      current_weight:parseFloat(profEdit.current_weight)||parseFloat(p.current_weight),
+      goal_weight:parseFloat(profEdit.goal_weight)||parseFloat(p.goal_weight),
+      goal_look:profEdit.goal_look||p.goal_look,
+      duration_months:parseInt(profEdit.duration_months)||parseInt(p.duration_months),
+      activity_level:profEdit.activity_level||p.activity_level,
+    };
+    const{error}=await supabase.from("profiles").update(updates).eq("id",user.id);
+    if(!error){
+      setProf(prev=>({...prev,...updates}));
+      // If weight changed, log new weight entry
+      if(profEdit.current_weight&&parseFloat(profEdit.current_weight)!==parseFloat(p.current_weight)){
+        const{data:w0}=await supabase.from("weight_log").insert({user_id:user.id,weight:parseFloat(profEdit.current_weight)}).select().single();
+        if(w0)setWLog(prev=>[...prev,{date:w0.logged_at,weight:w0.weight,id:w0.id}]);
+      }
+    }
+    setEditProf(false);setProfEdit({});
+  }
   async function togEx(k){const u={...dEx,[k]:!dEx[k]};setDEx(u);await local.set(`dex_${user?.id}`,u);}
   async function togSup(k){const u={...dSup,[k]:!dSup[k]};setDSup(u);await local.set(`dsu_${user?.id}`,u);}
 
@@ -388,10 +414,41 @@ export default function App(){
             </div>
           </Card>
           <Card T={T} style={{marginBottom:14}}>
-            <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Your Plan</div>
-            {[{l:"Current Weight",v:`${cw} kg`},{l:"Goal Weight",v:`${gw} kg`},{l:"Goal Look",v:GOALS.find(g=>g.id===p.goal_look)?.label||"—"},{l:"Duration",v:`${dur} months`},{l:"Daily Calories",v:`${nut.cals} kcal`},{l:"Daily Protein",v:`${nut.protein}g`},{l:"Workout Split",v:wo.name}].map(s=>(
-              <div key={s.l} style={{display:"flex",justifyContent:"space-between",padding:"11px 0",borderBottom:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.muted,fontWeight:500}}>{s.l}</span><span style={{fontSize:13,fontWeight:700,color:T.text}}>{s.v}</span></div>
-            ))}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:700,color:T.text}}>Edit Profile</div>
+              <button onClick={()=>{if(editProf){setEditProf(false);setProfEdit({});}else{setEditProf(true);setProfEdit({name:p.name||"",height:String(p.height||""),age:String(p.age||""),gender:p.gender||"male",current_weight:String(p.current_weight||""),goal_weight:String(p.goal_weight||""),goal_look:p.goal_look||"lean_athletic",duration_months:String(p.duration_months||"12"),activity_level:p.activity_level||"moderate"});}}} style={{background:editProf?`${T.red}12`:`${ac}12`,border:`1px solid ${editProf?T.red+"30":ac+"30"}`,borderRadius:8,padding:"5px 14px",color:editProf?T.red:ac,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{editProf?"Cancel":"Edit ✎"}</button>
+            </div>
+            {editProf?(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  {[{l:"Name",k:"name",ph:"Your name",t:"text",full:true},{l:"Height (cm)",k:"height",ph:"173",t:"number"},{l:"Age",k:"age",ph:"21",t:"number"},{l:"Current Weight (kg)",k:"current_weight",ph:"70",t:"number"},{l:"Goal Weight (kg)",k:"goal_weight",ph:"75",t:"number"},{l:"Duration (months)",k:"duration_months",ph:"12",t:"number"}].map(f=>(
+                    <div key={f.k} style={{gridColumn:f.full?"1/-1":"auto"}}>
+                      <div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:5}}>{f.l}</div>
+                      <input value={profEdit[f.k]||""} onChange={e=>setProfEdit(prev=>({...prev,[f.k]:e.target.value}))} placeholder={f.ph} type={f.t} style={{width:"100%",...IS2}}/>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:5}}>Gender</div>
+                  <select value={profEdit.gender||"male"} onChange={e=>setProfEdit(prev=>({...prev,gender:e.target.value}))} style={{width:"100%",...IS2,appearance:"none"}}><option value="male">Male</option><option value="female">Female</option></select>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:5}}>Activity Level</div>
+                  <select value={profEdit.activity_level||"moderate"} onChange={e=>setProfEdit(prev=>({...prev,activity_level:e.target.value}))} style={{width:"100%",...IS2,appearance:"none"}}><option value="sedentary">Sedentary</option><option value="light">Light (1-3x/week)</option><option value="moderate">Moderate (3-5x/week)</option><option value="active">Very active (6-7x/week)</option></select>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:11,color:T.muted,fontWeight:600,marginBottom:8}}>Goal Look</div>
+                  {GOALS.map(g=><div key={g.id} onClick={()=>setProfEdit(prev=>({...prev,goal_look:g.id}))} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:12,border:`1.5px solid ${(profEdit.goal_look||p.goal_look)===g.id?ac:"#222"}`,background:(profEdit.goal_look||p.goal_look)===g.id?`${ac}08`:"transparent",marginBottom:6,cursor:"pointer",transition:"all .2s"}}><span style={{fontSize:16}}>{g.icon}</span><div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:(profEdit.goal_look||p.goal_look)===g.id?ac:T.text}}>{g.label}</div><div style={{fontSize:10,color:T.muted}}>{g.desc}</div></div>{(profEdit.goal_look||p.goal_look)===g.id&&<div style={{width:18,height:18,borderRadius:"50%",background:ac,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#000",fontWeight:700}}>✓</div>}</div>)}
+                </div>
+                <Btn onClick={saveProfile} color={ac} style={{color:"#000"}}>Save Changes ✓</Btn>
+              </div>
+            ):(
+              <div>
+                {[{l:"Name",v:p.name||"—"},{l:"Current Weight",v:`${cw} kg`},{l:"Goal Weight",v:`${gw} kg`},{l:"Goal Look",v:GOALS.find(g=>g.id===p.goal_look)?.label||"—"},{l:"Duration",v:`${dur} months`},{l:"Daily Calories",v:`${nut.cals} kcal`},{l:"Daily Protein",v:`${nut.protein}g`},{l:"Workout Split",v:wo.name}].map(s=>(
+                  <div key={s.l} style={{display:"flex",justifyContent:"space-between",padding:"11px 0",borderBottom:`1px solid ${T.border}`}}><span style={{fontSize:13,color:T.muted,fontWeight:500}}>{s.l}</span><span style={{fontSize:13,fontWeight:700,color:T.text}}>{s.v}</span></div>
+                ))}
+              </div>
+            )}
           </Card>
           <Card T={T} style={{marginBottom:14}}>
             <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:14}}>Appearance</div>
